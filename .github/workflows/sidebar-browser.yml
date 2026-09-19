@@ -1,0 +1,59 @@
+name: Sidebar browser regression (isolated fixture)
+on:
+  push:
+    branches: [validation/sidebar-browser]
+  workflow_dispatch:
+    inputs:
+      patched_ref:
+        description: Exact commit SHA from PR 427 to test
+        default: 8e04e98b88d0f0cb6d1c2ceee36b1e77de29b84d
+        required: true
+      baseline_ref:
+        description: Exact pre-fix commit SHA for negative control
+        default: 49e5b4fe8343118595739be149037b6dfe4246e1
+        required: true
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.repository == 'dsh417/openstreetmap-ng'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PATCHED_REF: ${{ inputs.patched_ref || '8e04e98b88d0f0cb6d1c2ceee36b1e77de29b84d' }}
+      BASELINE_REF: ${{ inputs.baseline_ref || '49e5b4fe8343118595739be149037b6dfe4246e1' }}
+    defaults:
+      run:
+        working-directory: validation/sidebar-browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: dsh417/openstreetmap-ng
+          ref: ${{ env.BASELINE_REF }}
+          path: .sources/baseline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: dsh417/openstreetmap-ng
+          ref: ${{ env.PATCHED_REF }}
+          path: .sources/patched
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: npm
+          cache-dependency-path: validation/sidebar-browser/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+      - run: npm run build
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sidebar-browser-${{ github.run_id }}
+          path: |
+            validation/sidebar-browser/results/
+            validation/sidebar-browser/dist/manifest.json
+          retention-days: 14
+          if-no-files-found: error

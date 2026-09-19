@@ -9,7 +9,7 @@ The workflow checks out **two explicit commits**, bundles each original `app/vie
 - A real headless Chromium DOM, actual Preact layout lifecycle, actual MapLibre GL 5.21.0 and WebGL rendering (SwiftShader on GitHub's Linux runner).
 - Negative control: the old implementation must reproduce significant screen-coordinate drift in **all seven** mobile sidebar transitions. This expected-reproduction control passes when the old implementation exhibits the defects.
 - Patched implementation: the same seven transitions must keep geographic landmarks within 0.25 CSS px, including a second snapshot after delayed ResizeObserver delivery; also an equal-height top/bottom swap.
-- Route-focus target, running animation, viewport resize, desktop camera center and actual zoom-control button behavior have assertions, not just logged output.
+- Route-focus target, viewport resize, desktop camera center and actual zoom-control button behavior have assertions, not just logged output. The animation test runs both actual baseline and patched bundles: each flight must remain active after resize, complete at zoom 13, and produce the same final center within 1e-8 degrees. This checks preservation of native animation behavior. MapLibre 5.21 caches its initial screen offset during `flyTo`, so resizing can change the final center relative to the requested geographic target; this fixture does not claim that separate engine behavior is fixed.
 - Pitched/rotated Mercator and a globe surface case check the opposite geographic edge anchor before opening and closing, within 0.75 CSS px. A globe sky-edge case verifies the declared no-pan fallback.
 - Screenshots, JSON measurements, failure traces, HTML and JSON reports, and the source manifest are uploaded even on test failure.
 

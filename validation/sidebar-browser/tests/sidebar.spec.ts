@@ -83,16 +83,25 @@ test('route focus camera target survives sidebar layout',async({page},info)=>{
   expect(current.zoom).toBeCloseTo(13,8);
 });
 
-test('sidebar resize does not cancel a running flyTo',async({page},info)=>{
-  await load(page);
-  const animating=await click(page,'animate');
-  expect(animating.rect.height).toBeLessThan(788);
-  expect(animating.moving).toBe(true);
-  await expect.poll(async()=>(await snapshot(page)).moving).toBe(false);
-  const completed=await stable(page);
-  await record(info,'animation-result',{animating,completed});
-  expect(distance(completed.center,[0.04,0.03])).toBeLessThan(1e-8);
-  expect(completed.zoom).toBeCloseTo(13,8);
+test('sidebar resize preserves native flyTo behavior against the baseline',async({page},info)=>{
+  const results:any[]=[];
+  for(const mode of ['baseline','patched']){
+    const initial=await load(page,mode);
+    const animating=await click(page,'animate');
+    expect(animating.rect.height).toBeLessThan(788);
+    expect(animating.moving,mode+' flight must remain active after sidebar opens').toBe(true);
+    await expect.poll(async()=>(await snapshot(page)).moving).toBe(false);
+    const completed=await stable(page);
+    results.push({mode,initial,animating,completed});
+    expect(distance(initial.center,completed.center),'flight must actually advance').toBeGreaterThan(0.01);
+    expect(completed.zoom).toBeCloseTo(13,8);
+    expect(completed.errors).toEqual([]);
+  }
+  await record(info,'animation-result',{requestedCenter:[0.04,0.03],results});
+  // MapLibre 5.21 caches the original screen offset at flyTo start; resizing
+  // changes the native final center. Compare actual baseline behavior rather
+  // than claiming this sidebar fix also changes the engine's flight endpoint.
+  expect(distance(results[0].completed.center,results[1].completed.center)).toBeLessThan(1e-8);
 });
 
 test('viewport resize refreshes previous bounds before sidebar opens',async({page},info)=>{
